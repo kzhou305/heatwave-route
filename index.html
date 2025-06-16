@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Shortest Path on Road Network</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    #map { height: 90vh; }
+    button { margin: 10px; padding: 8px 12px; }
+  </style>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/@turf/turf/turf.min.js"></script>
+  <script src="https://unpkg.com/graphlib/dist/graphlib.min.js"></script>
+</head>
+<body>
+  <h3 style="margin-left:10px;">Select Start and End Points</h3>
+  <div id="map"></div>
+  <button onclick="calculateRoute()">Calculate Shortest Route</button>
+
+  <script>
+    let map = L.map('map').setView([35.6895, 139.6917], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    let roadsGeojson = null;
+    let graph = new graphlib.Graph({ directed: false });
+    let points = [];
+
+    // Load road network and build graph
+    fetch('data/osm_roads.geojson')
+      .then(response => response.json())
+      .then(data => {
+        roadsGeojson = data;
+        buildGraph(data);
+        L.geoJSON(data, { style: { color: "#aaa", weight: 1 } }).addTo(map);
+      });
+
+    // Add click-to-select start and end
+    map.on("click", e => {
+      if (points.length >= 2) {
+        points = [];
+        map.eachLayer(l => {
+          if (l._latlng || (l.feature && l.feature.geometry.type === 'LineString')) map.removeLayer(l);
+        });
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        L.geoJSON(roadsGeojson, { style: { color: "#aaa", weight: 1 } }).addTo(map);
+      }
+      points.push(e.latlng);
+      L.marker(e.latlng).addTo(map);
+    });
+
+    function buildGraph(geojson) {
+      geojson.features.forEach(feature => {
+        const coords = feature.geometry.coordinates;
+        for (let i = 0; i < coords.length - 1; i++) {
+          const a = coords[i].join(',');
+          const b = coords[i + 1].join(',');
+          const dist = turf.distance(turf.point(coords[i]), turf.point(coords[i + 1]), { units: 'kilometers' });
+          graph.setEdge(a, b, dist);
+        }
+      });
+    }
+
+    function findNearestNode(latlng) {
+      let minDist = Infinity;
+      let nearest = null;
+      graph.nodes().forEach(n => {
+        const [lon, lat] = n.split(',').map(Number);
+        const dist = turf.distance(turf.point([lon, lat]), turf.point([latlng.lng, latlng.lat]), { units: 'kilometers' });
+        if (dist < minDist) {
+          minDist = dist;
+          nearest = n;
+        }
+      });
+      return nearest;
+    }
+
+    function calculateRoute() {
+      if (points.length < 2) {
+        alert("Please select both start and end points.");
+        return;
+      }
+
+      const start = findNearestNode(points[0]);
+      const end = findNearestNode(points[1]);
+      const pathData = graphlib.alg.dijkstra(graph, start);
+
+      let current = end;
+      let route = [end.split(',').map(Number)];
+      while (current !== start) {
+        const prev = pathData[current].predecessor;
+        if (!prev) {
+          alert("No path found.");
+          return;
+        }
+        route.unshift(prev.split(',').map(Number));
+        current = prev;
+      }
+
+      const latlngs = route.map(coord => [coord[1], coord[0]]);
+      L.polyline(latlngs, { color: 'red' }).addTo(map);
+    }
+  </script>
+</body>
+</html>

@@ -33,6 +33,16 @@
         roadsGeojson = data;
         buildGraph(data);
         L.geoJSON(data, { style: { color: "#aaa", weight: 1 } }).addTo(map);
+
+        // Then load CCM boundary and zoom to it
+        fetch('data/CCM_Nihonbashi.geojson')
+          .then(res => res.json())
+          .then(boundary => {
+            const boundaryLayer = L.geoJSON(boundary, {
+              style: { color: '#0066ff', weight: 2, fillOpacity: 0.05 }
+            }).addTo(map);
+            map.fitBounds(boundaryLayer.getBounds());
+          });
       });
 
     // Add click-to-select start and end
@@ -44,6 +54,15 @@
         });
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
         L.geoJSON(roadsGeojson, { style: { color: "#aaa", weight: 1 } }).addTo(map);
+
+        // reload boundary again
+        fetch('data/CCM_Nihonbashi.geojson')
+          .then(res => res.json())
+          .then(boundary => {
+            L.geoJSON(boundary, {
+              style: { color: '#0066ff', weight: 2, fillOpacity: 0.05 }
+            }).addTo(map);
+          });
       }
       points.push(e.latlng);
       L.marker(e.latlng).addTo(map);

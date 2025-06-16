@@ -1,1 +1,5 @@
-
+flask
+geopandas
+networkx
+shapely
+matplotlib

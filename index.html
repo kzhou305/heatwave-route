@@ -1,558 +1,74 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>Heatwave Route</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link href="https://api.mapbox.com/mapbox-gl-js/v2.13.0/mapbox-gl.css" rel="stylesheet">
-    <script src="https://api.mapbox.com/mapbox-gl-js/v2.13.0/mapbox-gl.js"></script>
-    <script src="./lib/nice-select2-2.0.0/dist/js/nice-select2.js"></script>
-    <link rel="stylesheet" href="./lib/nice-select2-2.0.0/dist/css/nice-select2.css"/>
-    <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.1.1/mapbox-gl-directions.js"></script>
-    <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.1.1/mapbox-gl-directions.css" type="text/css">
-    <style>
-      body {
-        margin: 0;
-        padding: 0;
-        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      }
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Visualize Multiple GeoJSON Layers</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://api.mapbox.com/mapbox-gl-js/v2.13.0/mapbox-gl.css" rel="stylesheet">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v2.13.0/mapbox-gl.js"></script>
+  <style>
+    body { margin: 0; padding: 0; }
+    #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+  </style>
+</head>
+<body>
+<div id="map"></div>
+<script>
+  mapboxgl.accessToken = 'pk.eyJ1Ijoia3pob3U4IiwiYSI6ImNtYXFqdGRoNDAwcWQycHB0dTF4MWRrY2sifQ.6_LIbgwea8qHfJpFVdqC-A';  // Replace with your token
 
-      #map {
-        position: absolute;
-        top: 0;
-        bottom: 0;
-        width: 100%;
-      }
+  const map = new mapboxgl.Map({
+    container: 'map',
+    style: 'mapbox://styles/mapbox/light-v10',
+    center: [139.774, 35.685], // adjust to central Nihonbashi
+    zoom: 14
+  });
 
-      h1 {
-        font-size: 1.5vw; /*20px*/
-      }
-
-      h2 {
-        font-size: 1.2vw; /*16px; 1vw: 14px*/ 
-        line-height: 20px;
-        margin-bottom: 10px;
-      }
-
-      a {
-        text-decoration: none;
-        color: #018291/*#86B5A3;*/
-      }
-
-      .tab {
-        overflow: hidden;
-        background-color: #f1f1f1;
-        display: flex;
-        border: 1px solid #018291/*#86B5A3*/;
-      }
-
-      .tab button {
-        flex: 1;
-        background-color: white;
-        color: black;
-        border: none;
-        outline: none;
-        cursor: pointer;
-        padding: 10px;
-        transition: background-color 0.3s ease;
-        font-size: 1.1vw; 
-      }
-
-      .tab button:hover {
-        background-color: #018291 /*#5c9080*/;
-      }
-
-      .tab button.active {
-        background-color: #74B2B7/*#B6C7B8*/;
-      }
-
-      .tabcontent {
-        display: none;
-        padding: 5px;
-        background-color: white;
-      }
-
-      #console {
-        position: absolute;
-        margin: 10px;
-        width: 18%;
-        background-color: white;
-        padding: 10px;
-        right: 0px;
-      }
-
-      .session {
-        margin-bottom: 20px;
-      }
-
-      .session2 {
-        margin-bottom: 10px;
-      }
-
-      #legend div span {
-        display: inline-block;
-        height: 12px;
-        margin-right: 5px;
-        margin-left: 5px;
-        width: 12px;
-        opacity: 0.5;
-      }
-
-      .label {
-        width: 15%;
-        display: inline-block;
-        text-align: left;
-      }
-
-      .mapboxgl-popup-content {
-        padding: 10px;
-        line-height: 1.5;
-        max-width: 2000px;
-      }
-
-      .mapboxgl-popup-tip {
-        display: none;
-      }
-
-      .mapboxgl-ctrl-directions {
-        min-width: 100%;
-        max-wdith: 100%;
-      }
-
-      .mapboxgl-ctrl-geocoder input[type='text'] {
-        font-size: 0.8vw;
-      }
-
-      .mapbox-directions-profile label {
-        font-size: 0.8vw;
-      }
-
-      #loading-indicator {
-        display: none; /* Hide the loading indicator by default */
-        position: absolute;
-        font-size: 6vw; /*80px*/
-        top: 50%;
-        left: 30%;
-      }
-
-    </style>
-  </head>
-
-  <body>
-    <div id="map"></div>
-    <div id="loading-indicator">Updating...</div>
-    <div id="console">
-      <h1>Heatwave Route</h1>
-      <p style="font-size: 1.1vw">
-        Explore AeroATL Greenway Plan in maps and how your trips may be improved! 
-        <a
-          href="https://aeroatl.org/special-projects/aeroatl-greenway-model-mile/"
-          >Learn more about the plan at Aerotropolis Atlanta.</a
-        > 
-      </p>
-      <div class="tab">
-        <button class="tablinks" onclick="openTab(event, 'tab1')">Maps</button>
-        <button class="tablinks" onclick="openTab(event, 'tab2')">Trip Scenarios</button>
-      </div>
-      <div id="tab2" class="tabcontent">
-        <div id = 'directions'>
-          <p style="font-size: 1vw">
-            Let's test trip scenarios on parts of the Greenway Plan, which contains Model Miles, Priority Network, and existing bike paths.<br><br><b>Double click</b> on the map or type an address below to choose an origin and destination for a trip.
-          </p>
-        </div> 
-        <div id="route-summary">
-          <p style="font-weight: bold; margin-block: auto; font-size: 1vw; margin-top: 20px">Trip Summary</p>
-          <div>
-            <span style="border-top: 5px solid #4882C5; width: 10%; display: inline-block;"></span>
-            <span style="font-size: 1vw;">Trip with existing road networks</span>
-          </div>
-          <div>
-            <span style="border-top: 5px solid #white; width: 10%; display: inline-block;"></span>
-            <span style="font-size: 1vw;"></span>
-          </div>
-          <div>
-            <span style="border-top: 5px dashed #01314D; width: 10%; display: inline-block;"></span>
-            <span style="font-size: 1vw">Trip with the Greenway</span> 
-          </div>
-          <div>
-            <span style="border-top: 5px solid #white; width: 10%; display: inline-block;"></span>
-            <span style="font-size: 1vw"></span>
-          </div>
-        </div>
-        <p style="font-style: italic; font-size: 0.8vw">
-            Have questions about how the route is calculated? Please refer to <a href="https://github.com/xiaofanliang/AeroATLGreenway">Github</a> for project details, reporting issues, and downloading data. 
-        </p>
-      </div>
-      <div id="tab1" class="tabcontent">
-        <div class="session">
-          <h2>Heatwave Route Layer(s)</h2> 
-          <div id="selectLayer" style="font-size: 1vw">
-            <input type="checkbox" class="checkbox" checked='checked' value="All"> All
-            <br>
-            <input type="checkbox" class="checkbox" value="Existing Bike Paths"> Existing Bike Paths
-            <br>
-            <input type="checkbox" class="checkbox" value="Model Miles"> Model Miles
-            <br>
-            <input type="checkbox" class="checkbox" value="Priority Network"> Priority Network
-            <br>
-            <input type="checkbox" class="checkbox" value="Loop Connecting Downtowns"> Loop Connecting Downtowns
-            <br>
-            <input type="checkbox" class="checkbox" value="Airport Loop"> Airport Loop
-            <br>
-            <input type="checkbox" class="checkbox" value="Outer Ring"> Outer Ring
-            <br>
-            <input type="checkbox" class="checkbox" value="Local Connections"> Local Connections
-          </div>
-        <div id="basemap-selector" style="font-size: 1vw">
-          <h2>Basemap Styles</h2>
-          <input id="light-v11" type="radio" name="rtoggle" value="light" checked="checked">
-          <label for="light-v11">Light</label>
-          <input id="streets-v11" type="radio" name="rtoggle" value="streets">
-          <label for="streets-v11">Streets</label>
-          <input id="satellite-v9" type="radio" name="rtoggle" value="satellite">
-          <label for="satellite-v9">Satellite</label>
-        </div>
-        <div id="legend", class="session" style="font-size: 1vw">
-          <h2>Building Types by Color</h2>
-          <div class="legend-grid" style="display: grid; grid-template-columns: 1fr 1fr">
-            <div><span style="background-color: #5B5558"></span>Airport</div>
-            <div><span style="background-color: #0E7C33"></span>Recreation</div>
-            <div><span style="background-color: #9B959D"></span>Infrastructure</div>
-            <div><span style="background-color: #3C9493"></span>Industry</div>
-            <div><span style="background-color: #890B24"></span>Residence</div>
-            <div><span style="background-color: #072C83"></span>Office</div>
-            <div><span style="background-color: #CB4700"></span>Commerce</div>
-            <div><span style="background-color: #6DA8D6"></span>Institution</div>
-            <div><span style="background-color: #FE9C2D"></span>Hotel</div>
-            <div><span style="background-color: #532788"></span>School</div>
-          </div>
-        </div>
-        <div class="session">
-          <p style="font-style: italic; font-size: 0.8vw">
-            Created by <a href="https://www.xiaofanliang.com/">Xiaofan Liang</a>, with support from the <a href="https://www.trb.org/ACRP/GraduateResearchAwards.aspx">ACRP Graduate Research Award</a>. Please refer to <a href="https://github.com/xiaofanliang/AeroATLGreenway">Github</a> for project details, reporting issues, and downloading data. 
-          </p>
-        </div>
-      </div>
-    </div>
-    <script>
-      //reference: https://docs.mapbox.com/help/tutorials/show-changes-over-time/
-      //https://docs.mapbox.com/mapbox-gl-js/example/filter-features-within-map-view/
-      //https://docs.mapbox.com/mapbox-gl-js/style-spec/expressions/
-      //https://docs.mapbox.com/mapbox-gl-js/example/popup/
-      //https://codepen.io/ZondaDesign/pen/xxVxZVR //toggle layer
-
-      mapboxgl.accessToken = 'pk.eyJ1IjoieHhmZmxsIiwiYSI6ImNsZmtoY3YzbDAwdng0NG1yOXVqYmFveW4ifQ._VjRhEILbOSWgFVR8dtmSw';
-      var map = new mapboxgl.Map({
-          container: 'map', // container ID
-          style: 'mapbox://styles/mapbox/light-v10', // style URL //dark-v10 //light-v10
-          center: [139.782009, 35.688267], // starting position [lng, lat]
-          zoom: 11.5 // starting zoom
-      });
-
-      // Get the basemap selector container
-      const basemapSelector = document.getElementById('basemap-selector');
-      const inputs = basemapSelector.getElementsByTagName('input');
-
-      let plugin;
-      //https://github.com/mapbox/mapbox-gl-directions/blob/master/API.md#mapboxdirections
-      plugin = new MapboxDirections({
-          accessToken: mapboxgl.accessToken,
-          profile: "mapbox/walking",
-          interactive: false, //redefined to be double click manually
-          // hiding instruction-route-summary
-          controls: {
-            instructions: false
-          }
-      }); 
-      //add direction plug in to an existing div 
-      document.getElementById('directions').appendChild(plugin.onAdd(map))
-
-      for (const input of inputs) {
-        input.onclick = (layer) => {
-          const layerId = layer.target.id;
-          map.setStyle('mapbox://styles/mapbox/' + layerId);
-          map.once('styledata', loadLayers);
-        };
-      }
-
-      // set a global var to know which tab is active for controlling double click events
-      let activeTab;
-
-      // JavaScript function to switch between tabs
-      function openTab(event, tabName) {
-        // Hide all tab content
-        const tabContents = document.getElementsByClassName("tabcontent");
-        for (let i = 0; i < tabContents.length; i++) {
-          tabContents[i].style.display = "none";
-        }
-
-        // Remove active class from all tab buttons
-        const tabLinks = document.getElementsByClassName("tablinks");
-        for (let i = 0; i < tabLinks.length; i++) {
-          tabLinks[i].classList.remove("active");
-        }
-
-        // Show the selected tab content
-        document.getElementById(tabName).style.display = "block";
-
-        // Add active class to the clicked tab button
-        event.currentTarget.classList.add("active");
-        activeTab = tabName;
-
-        
-      function loadLayers() {
-        Promise.all([
-          fetch('data/CCM_Nihonbashi.geojson').then(response => response.json()),
-          fetch('data/osm_roads.geojson').then(response => response.json()),
-          fetch('data/Roads_mapbox.geojson').then(response => response.json())
-        ])
-        .then(([ccmData, osmData, mapboxData]) => {
-          if (!map.getSource('ccm-boundary')) {
-            map.addSource('ccm-boundary', {
-              type: 'geojson',
-              data: ccmData
-            });
-            map.addLayer({
-              id: 'ccm-boundary-layer',
-              type: 'fill',
-              source: 'ccm-boundary',
-              paint: {
-                'fill-color': '#f28cb1',
-                'fill-opacity': 0.4
-              }
-            });
-          }
-      
-          if (!map.getSource('osm')) {
-            map.addSource('osm', {
-              type: 'geojson',
-              data: osmData
-            });
-            map.addLayer({
-              id: 'osm-layer',
-              type: 'line',
-              source: 'osm',
-              paint: {
-                'line-color': '#555',
-                'line-width': 1.5
-              }
-            });
-          }
-  
-      if (!map.getSource('mapbox_road')) {
-        map.addSource('mapbox_road', {
-          type: 'geojson',
-          data: mapboxData
-        });
-        map.addLayer({
-          id: 'mapbox-road-layer',
-          type: 'line',
-          source: 'mapbox_road',
-          paint: {
-            'line-color': '#2c7fb8',
-            'line-width': 1.5
-          }
-        });
+  map.on('load', () => {
+    // --- CCM Boundary Layer ---
+    map.addSource('ccm_boundary', {
+      type: 'geojson',
+      data: 'data/CCM_Nihonbashi.geojson'
+    });
+    map.addLayer({
+      id: 'ccm_boundary_layer',
+      type: 'fill',
+      source: 'ccm_boundary',
+      paint: {
+        'fill-color': '#0080ff',
+        'fill-opacity': 0.2
       }
     });
-  }
-      map.on('load', () => {
-        loadLayers()
-      })
-      
-      map.on('mouseenter', 'mapbox_road', (e) => { //mousemove
-      // Change the cursor style as a UI indicator.
-      map.getCanvas().style.cursor = 'pointer'; 
-      // Populate the popup and set its coordinates based on the feature.
-      const feature = e.features[0];
-      popup
-        //.setLngLat(e.lngLat) //for click
-        .setLngLat(e.lngLat)
-        .setHTML(
-        `<p style='margin:0'><b>Building ID:</b> ${feature.properties.BuildingId}</p>
-         <p style='margin:0'><b>Zoning Code:</b> ${feature.properties.Zn_ClsC}</p>
-         <p style='margin:0'><b>Land Use Code:</b> ${feature.properties.LUCode}</p>
-         <p style='margin:0'><b>Land Use Type:</b> ${feature.properties.LUDes}</p>
-         <p style='margin:0'><b>Land Use Vis:</b> ${feature.properties.LU4Vis}</p>`
-        )
-        .addTo(map);
-      });
-         
-      map.on('mouseleave', 'mapbox_road', () => {
-        map.getCanvas().style.cursor = '';
-        popup.remove();
-      });
 
-     
-
-      let originSet = false;
-      let mouseDown = false;
-      let mouseMoved = false;
-
-      //setting mouseDown and moseMoved to prevent the issue where a click and drag followed by a single click trigger a double-click event. 
-      map.on('mousedown', () => {
-        mouseDown = true;
-        mouseMoved = false;
-      });
-
-      map.on('mousemove', () => {
-        if (mouseDown) {
-          mouseMoved = true;
-        }
-      });
-
-      map.on('mouseup', () => {
-        mouseDown = false;
-      });
-
-      function callAPI(startCoordinates, endCoordinates, routeProfile) {
-        // Show the loading indicator
-        const loadingIndicator = document.getElementById('loading-indicator');
-        loadingIndicator.style.display = 'block';
-
-        // Create the URL for your API
-        let url;
-        if(routeProfile == 'mapbox/biking') {
-          url = `https://my-plumber-app-vpmjd5znma-uc.a.run.app/AeroGreenwayRoute?coords=${startCoordinates[0]},${startCoordinates[1]},${endCoordinates[0]},${endCoordinates[1]}&profile=biking`;
-        } else {
-          url = `https://my-plumber-app-vpmjd5znma-uc.a.run.app/AeroGreenwayRoute?coords=${startCoordinates[0]},${startCoordinates[1]},${endCoordinates[0]},${endCoordinates[1]}&profile=walking`;
-        }
-
-        // Fetch the response from your API
-        fetch(url)
-          .then(response => response.json())
-          .then(data => {
-            const route = JSON.parse(data.geojson[0])
-            // Add or replace the first/last coordinates with the start and end coordinates in the route
-            //route.coordinates.unshift(startCoordinates);
-            // route.coordinates.push(endCoordinates);
-            route.coordinates[0] = startCoordinates;
-            route.coordinates[route.coordinates.length - 1] = endCoordinates;
-            drawRoute(route)
-            greenwayDistance = data.dist_miles[0]
-            greenwayPct = data.pct[0] //object
-            // Update the values in the HTML
-            const distanceSpan = document.querySelector('#route-summary > div:nth-child(5) > span:nth-child(2)');
-            distanceSpan.textContent = `${greenwayDistance} miles (${Math.round(data.pct[1] + data.pct[0])}% on the Greenway)`;
-
-            //hide loading texts
-            loadingIndicator.style.display = 'none';
-          })
+    // --- OSM Roads Layer ---
+    map.addSource('osm_roads', {
+      type: 'geojson',
+      data: 'data/osm_roads.geojson'
+    });
+    map.addLayer({
+      id: 'osm_roads_layer',
+      type: 'line',
+      source: 'osm_roads',
+      paint: {
+        'line-color': '#ff0000',
+        'line-width': 2
       }
+    });
 
-      function removeApiRoute() {
-        if (map.getLayer('api-route')) {
-          map.removeLayer('api-route');
-          map.removeSource('api-route');
-        }
+    // --- Roads Mapbox Layer ---
+    map.addSource('mapbox_roads', {
+      type: 'geojson',
+      data: 'data/Roads_mapbox.geojson'
+    });
+    map.addLayer({
+      id: 'mapbox_roads_layer',
+      type: 'line',
+      source: 'mapbox_roads',
+      paint: {
+        'line-color': '#00cc00',
+        'line-width': 2
       }
-      function drawRoute(data) {
-        // Remove the previous route layer if it exists
-        removeApiRoute();
-        map.addSource('api-route', {
-          'type': 'geojson',
-          'data': data
-        });
-        map.addLayer({
-          'id': 'api-route',
-          'type': 'line',
-          'source': 'api-route',
-          'layout': {
-            'line-join': 'round',
-            'line-cap': 'round'
-          },
-          'paint': {
-            'line-color': '#01314D',
-            'line-width': 6,
-            'line-dasharray': [4,1.5]
-          }
-        });
-      };
-
-      let startCoordinates = null;
-      let endCoordinates = null;
-
-      map.on('dblclick', (event) => {
-        //The double-click event handler now checks whether the mouseMoved variable is false before proceeding, which means the double-click event will only be triggered if the mouse wasn't moved between the first and second click.
-        if (activeTab == 'tab2' && !mouseMoved) {
-          // Get the clicked coordinates
-          const coordinates = [event.lngLat.lng, event.lngLat.lat];
-
-          // If the origin hasn't been set, set it
-          if (!originSet) {
-            plugin.setOrigin(coordinates);
-            originSet = true;
-            startCoordinates = plugin.getOrigin().geometry.coordinates
-          } else {
-            // If the origin is set, set the destination and reset the origin flag
-            plugin.setDestination(coordinates);
-            originSet = false;
-            endCoordinates = coordinates
-          }
-        }
-      });
-      
-      //remove api route when origin becomes empty (for some reason, cannot do the same when destination is empty); setTimeout is necessary to make sure plugin.getOrigin() will wait for plugin to respond
-      const geocoderInput = document.querySelector('.mapboxgl-ctrl-geocoder input');
-      geocoderInput.addEventListener('change', () => {
-        setTimeout(() => {
-          if(Object.keys(plugin.getOrigin()).length == 0 | Object.keys(plugin.getDestination()).length == 0) {
-            removeApiRoute()
-            //remove contents in route summary
-            document.querySelector('#route-summary > div:nth-child(3) > span:nth-child(2)').textContent = ""
-            document.querySelector('#route-summary > div:nth-child(5) > span:nth-child(2)').textContent = ""
-
-            //set them back to null so a profile change on empty OD will not trigger errors
-            startCoordinates = null;
-            endCoordinates = null;
-          }
-        }, 100);
-      })
-
-      let debounceTimeout = null;
-      const debounceTime = 500; // ms
-
-      function debounce(func) {
-        if (debounceTimeout) {
-          clearTimeout(debounceTimeout);
-        }
-        debounceTimeout = setTimeout(func, debounceTime);
-      }
-
-      // Add event listener for route event
-      plugin.on('route', (event) => {
-        // Retrieve the route information
-        const route = event.route[0];
-        // Access the duration and distance from the route
-        const duration = route.duration; // in seconds
-        const distance = route.distance; // in meters
-
-        // Convert the duration and distance to two digits
-        const durationInMinutes = Math.round(duration / 60);
-        const distanceInMiles = (distance * 0.000621371).toFixed(2);
-
-        // Update the values in the HTML
-        const distanceSpan = document.querySelector('#route-summary > div:nth-child(3) > span:nth-child(2)');
-        distanceSpan.textContent = `${distanceInMiles} miles (${durationInMinutes} mins)`;
-
-        //debounce help make sure that callAPI() only fired once in route or profile listener in 500ms. 
-        debounce(() => {
-          callAPI(plugin.getOrigin().geometry.coordinates, plugin.getDestination().geometry.coordinates, routeProfile);
-        });
-      });
-
-      let routeProfile = null; // Store the route profile
-      plugin.on('profile', (event) => {
-        routeProfile = event.profile
-        debounce(() => {
-          // only callAPI again if the coordinates are the same but profile has changed
-          if(startCoordinates && endCoordinates) {
-            if(plugin.getOrigin().geometry.coordinates == startCoordinates && plugin.getDestination().geometry.coordinates == endCoordinates) {
-              callAPI(startCoordinates, endCoordinates, routeProfile)}
-            }
-        });
-      });
-
-    </script>
-  </body>
+    });
+  });
+</script>
+</body>
 </html>

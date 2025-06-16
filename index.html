@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>OSM Roads Map</title>
+  <title>Nihonbashi Road & CCM Map</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link
     rel="stylesheet"
@@ -14,21 +14,30 @@
 </head>
 <body>
   <div id="map"></div>
-  <script
-    src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js">
-  </script>
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
   <script>
     const map = L.map("map").setView([35.685, 139.77], 16);
 
+    // Base OSM Tile
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "© OpenStreetMap contributors",
+      attribution: "© OpenStreetMap contributors"
     }).addTo(map);
 
-    fetch("osm_roads.geojson")
-      .then((res) => res.json())
-      .then((data) => {
+    // Load roads GeoJSON
+    fetch("data/osm_roads.geojson")
+      .then(res => res.json())
+      .then(data => {
         L.geoJSON(data, {
-          style: { color: "#0088cc", weight: 2 }
+          style: { color: "#0088cc", weight: 2 },
+        }).addTo(map);
+      });
+
+    // Load CCM layer
+    fetch("data/CCM_Nihonbashi.geojson")
+      .then(res => res.json())
+      .then(data => {
+        L.geoJSON(data, {
+          style: { color: "#ff6600", weight: 2, dashArray: "5, 5" },
         }).addTo(map);
       });
   </script>

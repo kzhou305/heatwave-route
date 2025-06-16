@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>OSM Roads Map</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+  />
+  <style>
+    #map { height: 100vh; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script
+    src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js">
+  </script>
+  <script>
+    const map = L.map("map").setView([35.685, 139.77], 16);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "© OpenStreetMap contributors",
+    }).addTo(map);
+
+    fetch("osm_roads.geojson")
+      .then((res) => res.json())
+      .then((data) => {
+        L.geoJSON(data, {
+          style: { color: "#0088cc", weight: 2 }
+        }).addTo(map);
+      });
+  </script>
+</body>
+</html>

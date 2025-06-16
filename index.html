@@ -24,7 +24,7 @@
     }).addTo(map);
 
     // Load roads GeoJSON
-    fetch("data/osm_roads.geojson")
+    fetch("data/osm_roads25.geojson")
       .then(res => res.json())
       .then(data => {
         L.geoJSON(data, {

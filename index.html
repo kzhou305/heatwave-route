@@ -31,11 +31,11 @@
     });
     map.addLayer({
       id: 'ccm_boundary_layer',
-      type: 'fill',
+      type: 'line',
       source: 'ccm_boundary',
       paint: {
         'fill-color': '#0080ff',
-        'fill-opacity': 0.2
+        'fill-opacity': 3
       }
     });
 
@@ -65,7 +65,7 @@
       source: 'mapbox_roads',
       paint: {
         'line-color': '#00cc00',
-        'line-width': 2
+        'line-width': 1
       }
     });
   });

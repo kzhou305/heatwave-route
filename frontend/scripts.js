@@ -6,7 +6,7 @@ map.on('click', function(e) {
 });
 
 function sendRequest() {
-  fetch("/route", {
+  fetch("https://your-cloud-api/route", {  // Or use client-side route calculator
     method: "POST",
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ start: points[0], end: points[1] })

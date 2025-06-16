@@ -1,45 +1,36 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8" />
-  <title>Nihonbashi Road & CCM Map</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
-  />
-  <style>
-    #map { height: 100vh; }
-  </style>
+  <title>Heat-Aware Route</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 </head>
 <body>
-  <div id="map"></div>
-  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <div id="map" style="height: 600px;"></div>
+  <button onclick="getRoute()">Get Route</button>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
-    const map = L.map("map").setView([35.685, 139.77], 16);
+    let map = L.map('map').setView([35.6895, 139.6917], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-    // Base OSM Tile
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "© OpenStreetMap contributors"
-    }).addTo(map);
+    let points = [];
+    map.on('click', function(e) {
+      if (points.length >= 2) points = [];
+      points.push(e.latlng);
+      L.marker(e.latlng).addTo(map);
+    });
 
-    // Load roads GeoJSON
-    fetch("data/osm_roads25.geojson")
-      .then(res => res.json())
-      .then(data => {
-        L.geoJSON(data, {
-          style: { color: "#0088cc", weight: 2 },
-        }).addTo(map);
-      });
-
-    // Load CCM layer
-    fetch("data/CCM_Nihonbashi.geojson")
-      .then(res => res.json())
-      .then(data => {
-        L.geoJSON(data, {
-          style: { color: "#ff6600", weight: 2, dashArray: "5, 5" },
-        }).addTo(map);
-      });
+    function getRoute() {
+      if (points.length < 2) return alert("Select start and end points");
+      fetch('/route', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({start: points[0], end: points[1]})
+      }).then(res => res.json())
+        .then(data => {
+          L.geoJSON(data.route).addTo(map);
+          // Call GSV image loader here later
+        });
+    }
   </script>
 </body>
 </html>

@@ -91,59 +91,6 @@
     mouseDown = false;
   });
 
-  function callAPI(startCoordinates, endCoordinates, routeProfile) {
-    const loadingIndicator = document.getElementById('loading-indicator');
-    loadingIndicator.style.display = 'block';
-
-    const url = `https://my-plumber-app-vpmjd5znma-uc.a.run.app/AeroGreenwayRoute?coords=${startCoordinates[0]},${startCoordinates[1]},${endCoordinates[0]},${endCoordinates[1]}&profile=${routeProfile}`;
-
-    fetch(url)
-      .then(response => response.json())
-      .then(data => {
-        const route = JSON.parse(data.geojson[0]);
-        route.coordinates[0] = startCoordinates;
-        route.coordinates[route.coordinates.length - 1] = endCoordinates;
-        drawRoute(route);
-
-        const greenwayDistance = data.dist_miles[0];
-        const greenwayPct = data.pct[0];
-
-        const distanceSpan = document.querySelector('#route-summary > div:nth-child(5) > span:nth-child(2)');
-        distanceSpan.textContent = `${greenwayDistance} miles (${Math.round(data.pct[1] + data.pct[0])}% on the Greenway)`;
-
-        loadingIndicator.style.display = 'none';
-      });
-  }
-
-  function removeApiRoute() {
-    if (map.getLayer('api-route')) {
-      map.removeLayer('api-route');
-      map.removeSource('api-route');
-    }
-  }
-
-  function drawRoute(data) {
-    removeApiRoute();
-    map.addSource('api-route', {
-      'type': 'geojson',
-      'data': data
-    });
-    map.addLayer({
-      'id': 'api-route',
-      'type': 'line',
-      'source': 'api-route',
-      'layout': {
-        'line-join': 'round',
-        'line-cap': 'round'
-      },
-      'paint': {
-        'line-color': '#01314D',
-        'line-width': 6,
-        'line-dasharray': [4, 1.5]
-      }
-    });
-  }
-
   let startCoordinates = null;
   let endCoordinates = null;
 

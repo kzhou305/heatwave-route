@@ -57,38 +57,194 @@
     }); 
   });
 
-  // ✅ Fix: Define directions as a variable
-  const directions = new MapboxDirections({
-    accessToken: mapboxgl.accessToken
-  });
+      let plugin;
+      //https://github.com/mapbox/mapbox-gl-directions/blob/master/API.md#mapboxdirections
+      plugin = new MapboxDirections({
+          accessToken: mapboxgl.accessToken,
+          profile: "mapbox/walking",
+          interactive: false, //redefined to be double click manually
+          // hiding instruction-route-summary
+          controls: {
+            instructions: false
+          }
+      }); 
+      //add direction plug in to an existing div 
+      document.getElementById('directions').appendChild(plugin.onAdd(map))
 
-  map.addControl(directions, 'top-left');
+      for (const input of inputs) {
+        input.onclick = (layer) => {
+          const layerId = layer.target.id;
+          map.setStyle('mapbox://styles/mapbox/' + layerId);
+          map.once('styledata', loadLayers);
+        };
+      }
 
-  directions.on('route', () => {
-    const origin = directions.getOrigin().geometry.coordinates;
-    const destination = directions.getDestination().geometry.coordinates;
 
-    const odData = {
-      from_lon: origin[0],
-      from_lat: origin[1],
-      to_lon: destination[0],
-      to_lat: destination[1]
-    };
+      let originSet = false;
+      let mouseDown = false;
+      let mouseMoved = false;
 
-    fetch("http://127.0.0.1:8888", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(odData)
-    })
-    .then(response => response.json())
-    .then(data => {
-      console.log("Response from R:", data);
-      alert("OD data sent to R backend successfully.");
-    })
-    .catch(error => {
-      console.error("Error sending data:", error);
-    });
-  });
+      //setting mouseDown and moseMoved to prevent the issue where a click and drag followed by a single click trigger a double-click event. 
+      map.on('mousedown', () => {
+        mouseDown = true;
+        mouseMoved = false;
+      });
+
+      map.on('mousemove', () => {
+        if (mouseDown) {
+          mouseMoved = true;
+        }
+      });
+
+      map.on('mouseup', () => {
+        mouseDown = false;
+      });
+
+      function callAPI(startCoordinates, endCoordinates, routeProfile) {
+        // Show the loading indicator
+        const loadingIndicator = document.getElementById('loading-indicator');
+        loadingIndicator.style.display = 'block';
+
+        // Create the URL for your API
+        let url;
+        url = `http://localhost:8000/getBestRoute?from_lon=${startCoordinates[0]}&from_lat=${startCoordinates[1]}&to_lon=${endCoordinates[0]}&to_lat=${endCoordinates[1]}`;
+        #change url
+
+        // Fetch the response from your API
+        fetch(url)
+          .then(response => response.json())
+          .then(data => {
+            const route = JSON.parse(data.geojson[0])
+            // Add or replace the first/last coordinates with the start and end coordinates in the route
+            //route.coordinates.unshift(startCoordinates);
+            // route.coordinates.push(endCoordinates);
+            route.coordinates[0] = startCoordinates;
+            route.coordinates[route.coordinates.length - 1] = endCoordinates;
+            drawRoute(route)
+            greenwayDistance = data.dist_miles[0]
+            greenwayPct = data.pct[0] //object
+            // Update the values in the HTML
+            const distanceSpan = document.querySelector('#route-summary > div:nth-child(5) > span:nth-child(2)');
+            distanceSpan.textContent = `${greenwayDistance} miles (${Math.round(data.pct[1] + data.pct[0])}% on the Greenway)`;
+
+            //hide loading texts
+            loadingIndicator.style.display = 'none';
+          })
+      }
+
+      function removeApiRoute() {
+        if (map.getLayer('api-route')) {
+          map.removeLayer('api-route');
+          map.removeSource('api-route');
+        }
+      }
+      function drawRoute(data) {
+        // Remove the previous route layer if it exists
+        removeApiRoute();
+        map.addSource('api-route', {
+          'type': 'geojson',
+          'data': data
+        });
+        map.addLayer({
+          'id': 'api-route',
+          'type': 'line',
+          'source': 'api-route',
+          'layout': {
+            'line-join': 'round',
+            'line-cap': 'round'
+          },
+          'paint': {
+            'line-color': '#01314D',
+            'line-width': 6,
+            'line-dasharray': [4,1.5]
+          }
+        });
+      };
+
+      let startCoordinates = null;
+      let endCoordinates = null;
+
+      map.on('dblclick', (event) => {
+        //The double-click event handler now checks whether the mouseMoved variable is false before proceeding, which means the double-click event will only be triggered if the mouse wasn't moved between the first and second click.
+        if (activeTab == 'tab2' && !mouseMoved) {
+          // Get the clicked coordinates
+          const coordinates = [event.lngLat.lng, event.lngLat.lat];
+
+          // If the origin hasn't been set, set it
+          if (!originSet) {
+            plugin.setOrigin(coordinates);
+            originSet = true;
+            startCoordinates = plugin.getOrigin().geometry.coordinates
+          } else {
+            // If the origin is set, set the destination and reset the origin flag
+            plugin.setDestination(coordinates);
+            originSet = false;
+            endCoordinates = coordinates
+          }
+        }
+      });
+      
+      //remove api route when origin becomes empty (for some reason, cannot do the same when destination is empty); setTimeout is necessary to make sure plugin.getOrigin() will wait for plugin to respond
+      const geocoderInput = document.querySelector('.mapboxgl-ctrl-geocoder input');
+      geocoderInput.addEventListener('change', () => {
+        setTimeout(() => {
+          if(Object.keys(plugin.getOrigin()).length == 0 | Object.keys(plugin.getDestination()).length == 0) {
+            removeApiRoute()
+            //remove contents in route summary
+            document.querySelector('#route-summary > div:nth-child(3) > span:nth-child(2)').textContent = ""
+            document.querySelector('#route-summary > div:nth-child(5) > span:nth-child(2)').textContent = ""
+
+            //set them back to null so a profile change on empty OD will not trigger errors
+            startCoordinates = null;
+            endCoordinates = null;
+          }
+        }, 100);
+      })
+
+      let debounceTimeout = null;
+      const debounceTime = 500; // ms
+
+      function debounce(func) {
+        if (debounceTimeout) {
+          clearTimeout(debounceTimeout);
+        }
+        debounceTimeout = setTimeout(func, debounceTime);
+      }
+
+      // Add event listener for route event
+      plugin.on('route', (event) => {
+        // Retrieve the route information
+        const route = event.route[0];
+        // Access the duration and distance from the route
+        const duration = route.duration; // in seconds
+        const distance = route.distance; // in meters
+
+        // Convert the duration and distance to two digits
+        const durationInMinutes = Math.round(duration / 60);
+        const distanceInMiles = (distance * 0.000621371).toFixed(2);
+
+        // Update the values in the HTML
+        const distanceSpan = document.querySelector('#route-summary > div:nth-child(3) > span:nth-child(2)');
+        distanceSpan.textContent = `${distanceInMiles} miles (${durationInMinutes} mins)`;
+
+        //debounce help make sure that callAPI() only fired once in route or profile listener in 500ms. 
+        debounce(() => {
+          callAPI(plugin.getOrigin().geometry.coordinates, plugin.getDestination().geometry.coordinates, routeProfile);
+        });
+      });
+
+      let routeProfile = null; // Store the route profile
+      plugin.on('profile', (event) => {
+        routeProfile = event.profile
+        debounce(() => {
+          // only callAPI again if the coordinates are the same but profile has changed
+          if(startCoordinates && endCoordinates) {
+            if(plugin.getOrigin().geometry.coordinates == startCoordinates && plugin.getDestination().geometry.coordinates == endCoordinates) {
+              callAPI(startCoordinates, endCoordinates, routeProfile)}
+            }
+        });
+      });
+
 </script>
 </body>
 </html>

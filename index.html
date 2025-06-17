@@ -52,10 +52,43 @@
         'line-color': '#aed6f1',
         'line-width': 2
       }
-    });
-
-  
+    }); 
   });
+
+
+  const directions = new MapboxDirections({
+  accessToken: mapboxgl.accessToken
+});
+
+  map.addControl(directions, 'top-left');
+
+
+  directions.on('route', () => {
+  const origin = directions.getOrigin().geometry.coordinates;
+  const destination = directions.getDestination().geometry.coordinates;
+
+  const odData = {
+    from_lon: origin[0],
+    from_lat: origin[1],
+    to_lon: destination[0],
+    to_lat: destination[1]
+  };
+
+  fetch("http://localhost:8000/od_upload", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(odData)
+  })
+  .then(response => response.json())
+  .then(data => {
+    console.log("Response from R:", data);
+    alert("OD data sent to R backend successfully.");
+  })
+  .catch(error => {
+    console.error("Error sending data:", error);
+  });
+});
+
 </script>
 </body>
 </html>

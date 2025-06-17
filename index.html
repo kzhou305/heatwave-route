@@ -75,7 +75,7 @@
       to_lat: destination[1]
     };
 
-    fetch("http://localhost:8000/od_upload", {
+    fetch("http://127.0.0.1:8000", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(odData)

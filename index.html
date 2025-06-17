@@ -9,22 +9,42 @@
   <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.1.1/mapbox-gl-directions.js"></script>
   <link href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.1.1/mapbox-gl-directions.css" rel="stylesheet">
   <style>
-    body { margin: 0; padding: 0; }
+    body { margin: 0; padding: 0; font-family: sans-serif; }
     #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+    #directions, #route-summary, #loading-indicator {
+      position: absolute;
+      background: white;
+      z-index: 1;
+      padding: 8px;
+      margin: 8px;
+      font-size: 14px;
+    }
+    #directions { top: 10px; left: 10px; }
+    #route-summary { bottom: 60px; left: 10px; }
+    #loading-indicator { bottom: 10px; left: 10px; display: none; }
   </style>
 </head>
 <body>
+
 <div id="map"></div>
+<div id="directions"></div>
+<div id="route-summary">
+  <div>Walking Distance/Time: <span></span></div>
+  <div>Greenway Distance/Percent: <span></span></div>
+</div>
+<div id="loading-indicator">Loading route...</div>
+
 <script>
   mapboxgl.accessToken = 'pk.eyJ1Ijoia3pob3U4IiwiYSI6ImNtYXFqdGRoNDAwcWQycHB0dTF4MWRrY2sifQ.6_LIbgwea8qHfJpFVdqC-A';
 
   const map = new mapboxgl.Map({
     container: 'map',
     style: 'mapbox://styles/mapbox/light-v10',
-    center: [139.774, 35.685],
+    center: [139.774, 35.685], // Nihonbashi
     zoom: 14
   });
 
+  // Load your GeoJSON layers
   map.on('load', () => {
     map.addSource('ccm_boundary', {
       type: 'geojson',
@@ -55,26 +75,19 @@
     });
   });
 
-  const directions = new MapboxDirections({
-    accessToken: mapboxgl.accessToken
+  const plugin = new MapboxDirections({
+    accessToken: mapboxgl.accessToken,
+    profile: 'mapbox/walking',
+    interactive: false,
+    controls: { instructions: false }
   });
-  const plugin = directions;
 
-  map.addControl(directions, 'top-left');
-
-  directions.on('route', () => {
-    const origin = directions.getOrigin().geometry.coordinates;
-    const destination = directions.getDestination().geometry.coordinates;
-
-    const odData = {
-      from_lon: origin[0],
-      from_lat: origin[1],
-      to_lon: destination[0],
-      to_lat: destination[1]
-    };
-  });
+  document.getElementById('directions').appendChild(plugin.onAdd(map));
 
   let originSet = false;
+  let startCoordinates = null;
+  let endCoordinates = null;
+  let routeProfile = null;
   let mouseDown = false;
   let mouseMoved = false;
 
@@ -91,52 +104,40 @@
     mouseDown = false;
   });
 
-  function callAPI(startCoordinates, endCoordinates, routeProfile) {
-    const loadingIndicator = document.getElementById('loading-indicator');
-    loadingIndicator.style.display = 'block';
+  let activeTab = 'tab2'; // Simulate tab2 being active for double-click
 
-    const url = `https://my-plumber-app-vpmjd5znma-uc.a.run.app/AeroGreenwayRoute?coords=${startCoordinates[0]},${startCoordinates[1]},${endCoordinates[0]},${endCoordinates[1]}&profile=${routeProfile}`;
-
-    fetch(url)
-      .then(response => response.json())
-      .then(data => {
-        const route = JSON.parse(data.geojson[0]);
-        route.coordinates[0] = startCoordinates;
-        route.coordinates[route.coordinates.length - 1] = endCoordinates;
-        drawRoute(route);
-
-        const greenwayDistance = data.dist_miles[0];
-        const greenwayPct = data.pct[0];
-
-        const distanceSpan = document.querySelector('#route-summary > div:nth-child(5) > span:nth-child(2)');
-        distanceSpan.textContent = `${greenwayDistance} miles (${Math.round(data.pct[1] + data.pct[0])}% on the Greenway)`;
-
-        loadingIndicator.style.display = 'none';
-      });
-  }
+  map.on('dblclick', (event) => {
+    if (activeTab === 'tab2' && !mouseMoved) {
+      const coords = [event.lngLat.lng, event.lngLat.lat];
+      if (!originSet) {
+        plugin.setOrigin(coords);
+        originSet = true;
+        startCoordinates = coords;
+      } else {
+        plugin.setDestination(coords);
+        originSet = false;
+        endCoordinates = coords;
+      }
+    }
+  });
 
   function removeApiRoute() {
-    if (map.getLayer('api-route')) {
-      map.removeLayer('api-route');
-      map.removeSource('api-route');
-    }
+    if (map.getLayer('api-route')) map.removeLayer('api-route');
+    if (map.getSource('api-route')) map.removeSource('api-route');
   }
 
   function drawRoute(data) {
     removeApiRoute();
     map.addSource('api-route', {
-      'type': 'geojson',
-      'data': data
+      type: 'geojson',
+      data: data
     });
     map.addLayer({
-      'id': 'api-route',
-      'type': 'line',
-      'source': 'api-route',
-      'layout': {
-        'line-join': 'round',
-        'line-cap': 'round'
-      },
-      'paint': {
+      id: 'api-route',
+      type: 'line',
+      source: 'api-route',
+      layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: {
         'line-color': '#01314D',
         'line-width': 6,
         'line-dasharray': [4, 1.5]
@@ -144,57 +145,43 @@
     });
   }
 
-  let startCoordinates = null;
-  let endCoordinates = null;
+  function callAPI(start, end, profile) {
+    const loader = document.getElementById('loading-indicator');
+    loader.style.display = 'block';
 
-  map.on('dblclick', (event) => {
-    if (activeTab == 'tab2' && !mouseMoved) {
-      const coordinates = [event.lngLat.lng, event.lngLat.lat];
-      if (!originSet) {
-        plugin.setOrigin(coordinates);
-        originSet = true;
-        startCoordinates = plugin.getOrigin().geometry.coordinates;
-      } else {
-        plugin.setDestination(coordinates);
-        originSet = false;
-        endCoordinates = coordinates;
-      }
-    }
-  });
+    const url = `http://localhost:8000/getBestRoute?from_lon=${start[0]}&from_lat=${start[1]}&to_lon=${end[0]}&to_lat=${end[1]}`;
 
-  const geocoderInput = document.querySelector('.mapboxgl-ctrl-geocoder input');
-  geocoderInput.addEventListener('change', () => {
-    setTimeout(() => {
-      if (Object.keys(plugin.getOrigin()).length === 0 || Object.keys(plugin.getDestination()).length === 0) {
-        removeApiRoute();
-        document.querySelector('#route-summary > div:nth-child(3) > span:nth-child(2)').textContent = "";
-        document.querySelector('#route-summary > div:nth-child(5) > span:nth-child(2)').textContent = "";
-        startCoordinates = null;
-        endCoordinates = null;
-      }
-    }, 100);
-  });
+    fetch(url)
+      .then(res => res.json())
+      .then(data => {
+        const route = JSON.parse(data.geojson[0]);
+        route.coordinates[0] = start;
+        route.coordinates[route.coordinates.length - 1] = end;
+        drawRoute(route);
 
-  let debounceTimeout = null;
-  const debounceTime = 500;
+        const miles = data.dist_miles[0];
+        const pct = Math.round(data.pct[0] + data.pct[1]);
 
-  function debounce(func) {
-    if (debounceTimeout) clearTimeout(debounceTimeout);
-    debounceTimeout = setTimeout(func, debounceTime);
+        document.querySelector('#route-summary > div:nth-child(2) > span').textContent =
+          `${miles} miles (${pct}% on the Greenway)`;
+
+        loader.style.display = 'none';
+      });
   }
 
-  let routeProfile = null;
+  let debounceTimeout = null;
+  function debounce(func, delay = 500) {
+    clearTimeout(debounceTimeout);
+    debounceTimeout = setTimeout(func, delay);
+  }
 
   plugin.on('route', (event) => {
     const route = event.route[0];
-    const duration = route.duration;
-    const distance = route.distance;
+    const durationMin = Math.round(route.duration / 60);
+    const distanceMi = (route.distance * 0.000621371).toFixed(2);
 
-    const durationInMinutes = Math.round(duration / 60);
-    const distanceInMiles = (distance * 0.000621371).toFixed(2);
-
-    const distanceSpan = document.querySelector('#route-summary > div:nth-child(3) > span:nth-child(2)');
-    distanceSpan.textContent = `${distanceInMiles} miles (${durationInMinutes} mins)`;
+    document.querySelector('#route-summary > div:nth-child(1) > span').textContent =
+      `${distanceMi} miles (${durationMin} mins)`;
 
     debounce(() => {
       callAPI(plugin.getOrigin().geometry.coordinates, plugin.getDestination().geometry.coordinates, routeProfile);
@@ -205,16 +192,14 @@
     routeProfile = event.profile;
     debounce(() => {
       if (startCoordinates && endCoordinates) {
-        if (
-          plugin.getOrigin().geometry.coordinates.toString() === startCoordinates.toString() &&
-          plugin.getDestination().geometry.coordinates.toString() === endCoordinates.toString()
-        ) {
+        const sameOrigin = plugin.getOrigin().geometry.coordinates.toString() === startCoordinates.toString();
+        const sameDest = plugin.getDestination().geometry.coordinates.toString() === endCoordinates.toString();
+        if (sameOrigin && sameDest) {
           callAPI(startCoordinates, endCoordinates, routeProfile);
         }
       }
     });
   });
-
 </script>
 </body>
 </html>

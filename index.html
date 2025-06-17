@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Heatwave Route</title>
+  <title>Visualize Multiple GeoJSON Layers</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="https://api.mapbox.com/mapbox-gl-js/v2.13.0/mapbox-gl.css" rel="stylesheet">
   <script src="https://api.mapbox.com/mapbox-gl-js/v2.13.0/mapbox-gl.js"></script>
@@ -91,7 +91,7 @@
     mouseDown = false;
   });
 
-  function callAPI(startCoordinates, endCoordinates, routeProfile) {Add commentMore actions
+  function callAPI(startCoordinates, endCoordinates, routeProfile) {
     const loadingIndicator = document.getElementById('loading-indicator');
     loadingIndicator.style.display = 'block';
 
@@ -143,6 +143,7 @@
       }
     });
   }
+
   let startCoordinates = null;
   let endCoordinates = null;
 

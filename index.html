@@ -56,12 +56,22 @@
   });
 
 
-  const directions = new MapboxDirections({
-  accessToken: mapboxgl.accessToken
-});
+  const map = new mapboxgl.Map({
+        container: 'map',
+        // Choose from Mapbox's core styles, or make your own style with Mapbox Studio
+        style: 'mapbox://styles/mapbox/standard',
+        center: [-79.4512, 43.6568],
+        zoom: 13
+    });
 
-  map.addControl(directions, 'top-left');
+    map.addControl(
+        new MapboxDirections({
+            accessToken: mapboxgl.accessToken
+        }),
+        'top-left'
+    );
 
+ 
 
   directions.on('route', () => {
   const origin = directions.getOrigin().geometry.coordinates;

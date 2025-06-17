@@ -6,6 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="https://api.mapbox.com/mapbox-gl-js/v2.13.0/mapbox-gl.css" rel="stylesheet">
   <script src="https://api.mapbox.com/mapbox-gl-js/v2.13.0/mapbox-gl.js"></script>
+  <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.1.1/mapbox-gl-directions.js"></script>
+  <link href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.1.1/mapbox-gl-directions.css" rel="stylesheet">
   <style>
     body { margin: 0; padding: 0; }
     #map { position: absolute; top: 0; bottom: 0; width: 100%; }
@@ -14,12 +16,12 @@
 <body>
 <div id="map"></div>
 <script>
-  mapboxgl.accessToken = 'pk.eyJ1Ijoia3pob3U4IiwiYSI6ImNtYXFqdGRoNDAwcWQycHB0dTF4MWRrY2sifQ.6_LIbgwea8qHfJpFVdqC-A';  // Replace with your token
+  mapboxgl.accessToken = 'pk.eyJ1Ijoia3pob3U4IiwiYSI6ImNtYXFqdGRoNDAwcWQycHB0dTF4MWRrY2sifQ.6_LIbgwea8qHfJpFVdqC-A';
 
   const map = new mapboxgl.Map({
     container: 'map',
     style: 'mapbox://styles/mapbox/light-v10',
-    center: [139.774, 35.685], // adjust to central Nihonbashi
+    center: [139.774, 35.685], // Central Nihonbashi
     zoom: 14
   });
 
@@ -34,7 +36,7 @@
       type: 'fill',
       source: 'ccm_boundary',
       paint: {
-        'fill-color': '#abb2b9 ',
+        'fill-color': '#abb2b9',
         'fill-opacity': 0.5
       }
     });
@@ -55,41 +57,38 @@
     }); 
   });
 
-    map.addControl(
-        new MapboxDirections({
-            accessToken: mapboxgl.accessToken
-        }),
-        'top-left'
-    );
+  // ✅ Fix: Define directions as a variable
+  const directions = new MapboxDirections({
+    accessToken: mapboxgl.accessToken
+  });
 
- 
+  map.addControl(directions, 'top-left');
 
   directions.on('route', () => {
-  const origin = directions.getOrigin().geometry.coordinates;
-  const destination = directions.getDestination().geometry.coordinates;
+    const origin = directions.getOrigin().geometry.coordinates;
+    const destination = directions.getDestination().geometry.coordinates;
 
-  const odData = {
-    from_lon: origin[0],
-    from_lat: origin[1],
-    to_lon: destination[0],
-    to_lat: destination[1]
-  };
+    const odData = {
+      from_lon: origin[0],
+      from_lat: origin[1],
+      to_lon: destination[0],
+      to_lat: destination[1]
+    };
 
-  fetch("http://localhost:8000/od_upload", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(odData)
-  })
-  .then(response => response.json())
-  .then(data => {
-    console.log("Response from R:", data);
-    alert("OD data sent to R backend successfully.");
-  })
-  .catch(error => {
-    console.error("Error sending data:", error);
+    fetch("http://localhost:8000/od_upload", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(odData)
+    })
+    .then(response => response.json())
+    .then(data => {
+      console.log("Response from R:", data);
+      alert("OD data sent to R backend successfully.");
+    })
+    .catch(error => {
+      console.error("Error sending data:", error);
+    });
   });
-});
-
 </script>
 </body>
 </html>

@@ -30,7 +30,6 @@
 <div id="directions"></div>
 <div id="route-summary">
   <div>Walking Distance/Time: <span></span></div>
-  <div>Greenway Distance/Percent: <span></span></div>
 </div>
 <div id="loading-indicator">Loading route...</div>
 
@@ -162,10 +161,7 @@
         const miles = data.dist_miles[0];
         const pct = Math.round(data.pct[0] + data.pct[1]);
 
-        document.querySelector('#route-summary > div:nth-child(2) > span').textContent =
-          `${miles} miles (${pct}% on the Greenway)`;
-
-        loader.style.display = 'none';
+       
       });
   }
 
